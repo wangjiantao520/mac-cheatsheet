@@ -46,8 +46,7 @@ jobs:
         with:
           name: ${{ steps.version.outputs.VERSION }}
           generate_release_notes: true
-          files: |
-            build/Build/Products/Release/CheatSheet-${{ steps.version.outputs.VERSION }}.zip
+          files: build/Build/Products/Release/CheatSheet-${{ steps.version.outputs.VERSION }}.zip
           fail_on_unmatched_files: true
           draft: false
           prerelease: ${{ contains(github.ref, '-') }}  # 含 - 的 tag 视为 pre-release

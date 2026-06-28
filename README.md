@@ -1,5 +1,10 @@
 # CheatSheet — macOS 快捷键速查工具
 
+[![Build](https://github.com/wangjiantao520/mac-cheatsheet/actions/workflows/build.yml/badge.svg)](https://github.com/wangjiantao520/mac-cheatsheet/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/wangjiantao520/mac-cheatsheet)](https://github.com/wangjiantao520/mac-cheatsheet/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+
 一款基于 SwiftUI + AppKit 的菜单栏 App。在任意应用界面 **按住 ⌘ Command 键**，即可在光标附近弹出一个非模态面板，分类展示该应用的全部可用快捷键。按下任意按键即可关闭，不抢焦点、不影响当前应用。
 
 ## 功能特性
@@ -123,3 +128,37 @@ r["com.example.MyApp"] = [
 
 - macOS 12.0 Monterey 或更高版本
 - 需要授予「辅助功能」权限
+
+
+---
+
+## 📦 下载
+
+推荐下载预编译版本：[GitHub Releases](https://github.com/wangjiantao520/mac-cheatsheet/releases/latest)
+
+下载 `CheatSheet-x.y.z.zip` → 解压 → 把 `CheatSheet.app` 拖到 `/Applications` → 启动后授予「辅助功能」权限。
+
+> ⚠️ 由于没有 Apple 开发者签名，首次启动需要在「系统设置 → 隐私与安全性」点击「仍要打开」。
+
+## 🚀 本地构建
+
+```bash
+git clone https://github.com/wangjiantao520/mac-cheatsheet.git
+cd mac-cheatsheet
+./build.sh          # 需要 macOS + Xcode
+```
+
+或者直接用 Xcode 打开 `CheatSheet.xcodeproj` 按 ⌘R。
+
+## 🔄 发布新版本
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+`.github/workflows/release.yml` 会在 tag 推送时自动 build + 创建 GitHub Release。
+
+## 📄 许可证
+
+[MIT](LICENSE)

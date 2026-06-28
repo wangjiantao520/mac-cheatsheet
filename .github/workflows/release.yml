@@ -3,8 +3,8 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'         # 例如 v1.0.0、v0.2.1
-  workflow_dispatch:  # 也允许手动触发（输入版本号）
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   release:
@@ -12,7 +12,7 @@ jobs:
     runs-on: macos-14
 
     permissions:
-      contents: write   # 用来创建 Release
+      contents: write   # 创建 Release + 上传 asset 需要
 
     steps:
       - name: Checkout
@@ -24,29 +24,46 @@ jobs:
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             VERSION="${GITHUB_REF#refs/tags/}"
           else
-            # 手动触发时用输入或默认 0.0.0-dev
             VERSION="${GITHUB_REF#refs/tags/}"
           fi
           echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Building version: ${VERSION}"
 
-      - name: Show toolchain
-        run: xcodebuild -version
-
-      - name: Build (Release, ad-hoc signed)
+      - name: Build
         run: ./build.sh
 
       - name: Zip .app
         run: |
           cd build/Build/Products/Release
-          zip -r CheatSheet-${VERSION}.zip CheatSheet.app
+          ls -la CheatSheet.app
+          zip -r "CheatSheet-${VERSION}.zip" CheatSheet.app
+          ls -la "CheatSheet-${VERSION}.zip"
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: ${{ steps.version.outputs.VERSION }}
-          generate_release_notes: true
-          files: build/Build/Products/Release/CheatSheet-${{ steps.version.outputs.VERSION }}.zip
-          fail_on_unmatched_files: true
-          draft: false
-          prerelease: ${{ contains(github.ref, '-') }}  # 含 - 的 tag 视为 pre-release
+      - name: Verify zip exists
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          FILE="build/Build/Products/Release/CheatSheet-${VERSION}.zip"
+          test -f "$FILE" || { echo "❌ 找不到 $FILE"; exit 1; }
+          echo "✅ 找到 $FILE ($(du -h "$FILE" | awk '{print $1}'))"
+
+      - name: Create GitHub Release via gh CLI
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ZIP="build/Build/Products/Release/CheatSheet-${VERSION}.zip"
+          
+          # 含 - 的 tag 视为 pre-release
+          IS_PRERELEASE=""
+          if [[ "$VERSION" == *-* ]]; then
+            IS_PRERELEASE="--prerelease"
+          fi
+          
+          gh release create "$VERSION" \
+            "$ZIP" \
+            --title "$VERSION" \
+            --generate-notes \
+            $IS_PRERELEASE
+          
+          echo "✅ Release created: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${VERSION}"

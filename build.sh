@@ -1,23 +1,25 @@
 #!/bin/zsh
-# CheatSheet — 一键编译脚本（使用 Xcode 内嵌工具链以避免 shim 拦截）
+# CheatSheet — 一键编译脚本
 # 用法：  ./build.sh
+# 本地：自动用 `xcode-select -p` 指向的 Xcode 工具链
+# CI  ：GitHub Actions runner 上同样可用（macOS runner 自带 Xcode）
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
-# 优先使用 Xcode.app 内嵌的真实工具链，
-# 而不是 /usr/bin 下的 codex shim（会被许可检查拦截）。
-XCODE_DEVELOPER="/Applications/Xcode.app/Contents/Developer"
-if [ ! -x "$XCODE_DEVELOPER/usr/bin/xcodebuild" ]; then
-  echo "!! 未找到 Xcode.app，请先安装 Xcode。"
+# 1. 解析当前激活的 Xcode（CI 和本地都用同一套逻辑）
+XCODE_DEV="$(xcode-select -p)"
+if [ ! -x "$XCODE_DEV/usr/bin/xcodebuild" ]; then
+  echo "!! 没找到可用的 xcodebuild（xcode-select 指向：$XCODE_DEV）"
+  echo "   本地请安装 Xcode 并运行：sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
   exit 1
 fi
-export PATH="$XCODE_DEVELOPER/usr/bin:$XCODE_DEVELOPER/Toolchains/XcodeDefault.xctoolchain/usr/bin:$PATH"
+export PATH="$XCODE_DEV/usr/bin:$XCODE_DEV/Toolchains/XcodeDefault.xctoolchain/usr/bin:$PATH"
 
-echo "==> 工具链: $($XCODE_DEVELOPER/usr/bin/xcodebuild -version | head -1)"
+echo "==> Xcode 工具链: $($XCODE_DEV/usr/bin/xcodebuild -version | head -1)"
 echo "==> 编译 CheatSheet.app (Release)…"
 
-"$XCODE_DEVELOPER/usr/bin/xcodebuild" \
+"$XCODE_DEV/usr/bin/xcodebuild" \
   -project CheatSheet.xcodeproj \
   -scheme CheatSheet \
   -configuration Release \

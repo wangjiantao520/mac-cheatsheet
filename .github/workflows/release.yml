@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'         # 例如 v1.0.0、v0.2.1
+  workflow_dispatch:  # 也允许手动触发（输入版本号）
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: macos-14
+
+    permissions:
+      contents: write   # 用来创建 Release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version from tag
+        id: version
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            # 手动触发时用输入或默认 0.0.0-dev
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Building version: ${VERSION}"
+
+      - name: Show toolchain
+        run: xcodebuild -version
+
+      - name: Build (Release, ad-hoc signed)
+        run: ./build.sh
+
+      - name: Zip .app
+        run: |
+          cd build/Build/Products/Release
+          zip -r CheatSheet-${VERSION}.zip CheatSheet.app
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.version.outputs.VERSION }}
+          generate_release_notes: true
+          files: |
+            build/Build/Products/Release/CheatSheet-${{ steps.version.outputs.VERSION }}.zip
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: ${{ contains(github.ref, '-') }}  # 含 - 的 tag 视为 pre-release

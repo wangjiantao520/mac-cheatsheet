@@ -27,6 +27,7 @@ jobs:
             VERSION="${GITHUB_REF#refs/tags/}"
           fi
           echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"   # 让后续 step 的 shell 里也能用 $VERSION
           echo "Building version: ${VERSION}"
 
       - name: Build

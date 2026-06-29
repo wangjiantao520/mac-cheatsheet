@@ -5,22 +5,37 @@ import AppKit
 /// events, not consume them — which is exactly what we want so that the
 /// frontmost application still receives the keystroke.
 ///
-/// Long-press semantics: `onCommandDown` only fires after the user has
-/// held ⌘ OR ⌃ continuously for `longPressThreshold` seconds, with no
-/// other modifier (⇧ / ⌥ / the other trigger key) involved. This prevents
-/// the panel from appearing when the user is executing a regular ⌘X / ⌘S
-/// shortcut, or a ⌘⌃ / ⌃⇧ combo.
+/// Long-press semantics: when `requireLongPress == true` (default), the
+/// user must hold ⌘ OR ⌃ continuously for `longPressThreshold` seconds,
+/// with no other modifier (⇧ / ⌥ / the other trigger key) involved. When
+/// `requireLongPress == false`, a single press of ⌘/⌃ alone fires
+/// `onCommandDown` immediately. This prevents the panel from appearing
+/// when the user is executing a regular ⌘X / ⌘S shortcut, or a ⌘⌃ / ⌃⇧
+/// combo.
 final class HotkeyManager {
 
-    // MARK: - Tuning
+    // MARK: - Tunables (mirrored from SettingsStore; kept in sync via notification)
+
+    /// Whether ⌘/⌃ must be held for `longPressThreshold` seconds.
+    /// When false, a single press fires immediately.
+    var requireLongPress: Bool {
+        didSet {
+            if !requireLongPress { cancelLongPress() }
+        }
+    }
 
     /// How long (in seconds) the user must hold ⌘ or ⌃ before the panel appears.
-    private let longPressThreshold: TimeInterval = 0.4
+    var longPressThreshold: TimeInterval {
+        didSet {
+            longPressThreshold = max(0.05, min(1.0, longPressThreshold))
+        }
+    }
 
     // MARK: - Events
 
     /// Fired when ⌘ or ⌃ has been held long enough to count as a long-press
     /// (no other modifier pressed during the hold, only one trigger key down).
+    /// Also fired immediately on press when `requireLongPress == false`.
     var onCommandDown: (() -> Void)?
 
     /// Fired when the trigger key (⌘ or ⌃) is released.
@@ -33,6 +48,13 @@ final class HotkeyManager {
     /// Fired when the user clicks the mouse outside the panel.
     var onMouseClicked: ((NSEvent) -> Void)?
 
+    // MARK: - Init
+
+    init(settings: Settings = .default) {
+        self.requireLongPress = settings.requireLongPress
+        self.longPressThreshold = settings.longPressThreshold
+    }
+
     // MARK: - Private state
 
     private var flagsMonitor: Any?
@@ -44,6 +66,7 @@ final class HotkeyManager {
     /// True when exactly one of ⌘/⌃ is down and no shift/option is pressed.
     private var wasTriggerAlone = false
     private var longPressTimer: Timer?
+    private var settingsObserver: NSObjectProtocol?
     private(set) var isRunning = false
 
     // MARK: - Lifecycle
@@ -74,7 +97,12 @@ final class HotkeyManager {
                     self.wasTriggerAlone = false
                 } else {
                     self.wasTriggerAlone = true
-                    self.scheduleLongPress()
+                    if self.requireLongPress {
+                        self.scheduleLongPress()
+                    } else {
+                        // Single-press mode: fire immediately.
+                        DispatchQueue.main.async { self.onCommandDown?() }
+                    }
                 }
             }
             // Release edge: every trigger key released.
@@ -108,6 +136,19 @@ final class HotkeyManager {
             self?.cancelLongPress()
             DispatchQueue.main.async { self?.onMouseClicked?(event) }
         }
+
+        // 4. React to settings changes while running.
+        settingsObserver = NotificationCenter.default.addObserver(
+            forName: .settingsDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            guard let self = self,
+                  let new = note.userInfo?["settings"] as? Settings
+            else { return }
+            self.requireLongPress = new.requireLongPress
+            self.longPressThreshold = new.longPressThreshold
+        }
     }
 
     func stop() {
@@ -115,9 +156,11 @@ final class HotkeyManager {
         if let m = flagsMonitor { NSEvent.removeMonitor(m) }
         if let m = keyMonitor   { NSEvent.removeMonitor(m) }
         if let m = mouseMonitor { NSEvent.removeMonitor(m) }
+        if let obs = settingsObserver { NotificationCenter.default.removeObserver(obs) }
         flagsMonitor = nil
         keyMonitor = nil
         mouseMonitor = nil
+        settingsObserver = nil
         isRunning = false
     }
 
@@ -127,14 +170,15 @@ final class HotkeyManager {
 
     private func scheduleLongPress() {
         cancelLongPress()
+        let threshold = longPressThreshold
         let timer = Timer.scheduledTimer(
-            withTimeInterval: longPressThreshold,
+            withTimeInterval: threshold,
             repeats: false
         ) { [weak self] _ in
             guard let self = self else { return }
             self.longPressTimer = nil
             // Only fire if exactly one trigger key is still held alone.
-            if self.wasTriggerAlone {
+            if self.wasTriggerAlone && self.requireLongPress {
                 DispatchQueue.main.async { self.onCommandDown?() }
             }
         }

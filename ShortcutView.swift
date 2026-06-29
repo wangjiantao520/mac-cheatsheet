@@ -6,11 +6,21 @@ struct ShortcutView: View {
     let app: FrontmostApp
     let categories: [ShortcutCategory]
 
+    // Live settings: when SettingsStore mutates, ShortcutView re-renders.
+    @ObservedObject private var store = SettingsStore.shared
+
     var body: some View {
         VStack(spacing: 0) {
             HeaderBar(app: app)
             Divider().opacity(0.25)
-            CategoryList(categories: categories)
+            CategoryList(
+                categories: categories,
+                fontSize: store.settings.shortcutFontSize,
+                keyCapFontSize: store.settings.keyCapFontSize,
+                textColor: store.settings.resolvedTextColor,
+                keyCapColor: store.settings.resolvedKeyCapColor,
+                defaultCollapsed: store.settings.collapseCategories
+            )
             FooterBar()
         }
         .frame(width: 480, height: 540)
@@ -58,7 +68,7 @@ private struct HeaderBar: View {
             Spacer()
 
             HStack(spacing: 5) {
-                KeyCap(text: "⌘")
+                KeyCap(text: "⌘", fontSize: 11.5, color: .primary)
                 Text("长按以显示")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
@@ -79,12 +89,24 @@ private struct HeaderBar: View {
 
 private struct CategoryList: View {
     let categories: [ShortcutCategory]
+    let fontSize: Double
+    let keyCapFontSize: Double
+    let textColor: Color
+    let keyCapColor: Color
+    let defaultCollapsed: Bool
 
     var body: some View {
         ScrollView(showsIndicators: true) {
             LazyVStack(alignment: .leading, spacing: 14) {
                 ForEach(categories) { category in
-                    CategorySection(category: category)
+                    CategorySection(
+                        category: category,
+                        fontSize: fontSize,
+                        keyCapFontSize: keyCapFontSize,
+                        textColor: textColor,
+                        keyCapColor: keyCapColor,
+                        defaultCollapsed: defaultCollapsed
+                    )
                 }
 
                 if categories.isEmpty {
@@ -108,50 +130,84 @@ private struct CategoryList: View {
 
 private struct CategorySection: View {
     let category: ShortcutCategory
+    let fontSize: Double
+    let keyCapFontSize: Double
+    let textColor: Color
+    let keyCapColor: Color
+    let defaultCollapsed: Bool
+
+    @State private var isCollapsed: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: category.symbol)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.accentColor)
-                Text(category.name.uppercased())
-                    .font(.system(size: 10.5, weight: .semibold))
-                    .tracking(0.6)
-                    .foregroundStyle(.secondary)
+            // Header row — clicking toggles collapse state.
+            Button(action: { isCollapsed.toggle() }) {
+                HStack(spacing: 6) {
+                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 10)
+                    Image(systemName: category.symbol)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
+                    Text(category.name.uppercased())
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .tracking(0.6)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.leading, 4)
             }
-            .padding(.leading, 4)
+            .buttonStyle(.plain)
 
-            VStack(spacing: 0) {
-                ForEach(Array(category.shortcuts.enumerated()), id: \.element.id) { index, shortcut in
-                    ShortcutRow(shortcut: shortcut)
-                    if index < category.shortcuts.count - 1 {
-                        Divider().opacity(0.18).padding(.leading, 14)
+            if !isCollapsed {
+                VStack(spacing: 0) {
+                    ForEach(Array(category.shortcuts.enumerated()), id: \.element.id) { index, shortcut in
+                        ShortcutRow(
+                            shortcut: shortcut,
+                            fontSize: fontSize,
+                            keyCapFontSize: keyCapFontSize,
+                            textColor: textColor,
+                            keyCapColor: keyCapColor
+                        )
+                        if index < category.shortcuts.count - 1 {
+                            Divider().opacity(0.18).padding(.leading, 14)
+                        }
                     }
                 }
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.primary.opacity(0.045))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
+                )
             }
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.primary.opacity(0.045))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
-            )
+        }
+        .onAppear {
+            isCollapsed = defaultCollapsed
         }
     }
 }
 
 private struct ShortcutRow: View {
     let shortcut: Shortcut
+    let fontSize: Double
+    let keyCapFontSize: Double
+    let textColor: Color
+    let keyCapColor: Color
 
     var body: some View {
         HStack {
             Text(shortcut.title)
-                .font(.system(size: 12.5))
-                .foregroundStyle(.primary)
+                .font(.system(size: fontSize))
+                .foregroundStyle(textColor)
             Spacer(minLength: 12)
-            KeyComboDisplay(text: shortcut.keys)
+            KeyComboDisplay(
+                text: shortcut.keys,
+                keyCapFontSize: keyCapFontSize,
+                keyCapColor: keyCapColor
+            )
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 7)
@@ -160,6 +216,8 @@ private struct ShortcutRow: View {
 
 private struct KeyComboDisplay: View {
     let text: String
+    let keyCapFontSize: Double
+    let keyCapColor: Color
 
     var body: some View {
         let parts = text
@@ -169,7 +227,7 @@ private struct KeyComboDisplay: View {
 
         HStack(spacing: 4) {
             ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
-                KeyCap(text: part)
+                KeyCap(text: part, fontSize: keyCapFontSize, color: keyCapColor)
             }
         }
     }
@@ -177,11 +235,13 @@ private struct KeyComboDisplay: View {
 
 private struct KeyCap: View {
     let text: String
+    let fontSize: Double
+    let color: Color
 
     var body: some View {
         Text(text)
-            .font(.system(size: 11.5, weight: .medium, design: .rounded))
-            .foregroundStyle(.primary)
+            .font(.system(size: fontSize, weight: .medium, design: .rounded))
+            .foregroundStyle(color)
             .padding(.horizontal, 7)
             .padding(.vertical, 2.5)
             .background(

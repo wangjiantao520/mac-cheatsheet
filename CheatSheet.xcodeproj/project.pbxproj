@@ -15,6 +15,10 @@
 		RRDE883876A5B269ECC4F2283 /* ShortcutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = QQDA3AA16FD91A16E57300FA0 /* ShortcutView.swift */; };
 		RR204B17F03F52344224A7A9F /* ShortcutDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = QQE858218B09163265D4341DC /* ShortcutDatabase.swift */; };
 		RR9F6F835A877055490B40047 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = QQ3163839806A03BB600C80E7 /* Models.swift */; };
+		RRAA11BB22CC33DD44EE55FF1 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = QQAA11BB22CC33DD44EE55FF1 /* Settings.swift */; };
+		RRAA11BB22CC33DD44EE55FF2 /* LaunchAtLoginHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = QQAA11BB22CC33DD44EE55FF2 /* LaunchAtLoginHelper.swift */; };
+		RRAA11BB22CC33DD44EE55FF3 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = QQAA11BB22CC33DD44EE55FF3 /* SettingsView.swift */; };
+		RRAA11BB22CC33DD44EE55FF4 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = QQAA11BB22CC33DD44EE55FF4 /* SettingsWindowController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +32,10 @@
 		QQ3163839806A03BB600C80E7 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		SS4922B38B6324A375D6C24D7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		CCC9345BC5258905524F23887D /* CheatSheet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CheatSheet.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		QQAA11BB22CC33DD44EE55FF1 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
+		QQAA11BB22CC33DD44EE55FF2 /* LaunchAtLoginHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginHelper.swift; sourceTree = "<group>"; };
+		QQAA11BB22CC33DD44EE55FF3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		QQAA11BB22CC33DD44EE55FF4 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -68,7 +76,11 @@
 				QQDA3AA16FD91A16E57300FA0 /* ShortcutView.swift */,
 				QQE858218B09163265D4341DC /* ShortcutDatabase.swift */,
 				QQ3163839806A03BB600C80E7 /* Models.swift */,
-				SS4922B38B6324A375D6C24D7 /* Info.plist */,
+								QQAA11BB22CC33DD44EE55FF1 /* Settings.swift */,
+				QQAA11BB22CC33DD44EE55FF2 /* LaunchAtLoginHelper.swift */,
+				QQAA11BB22CC33DD44EE55FF3 /* SettingsView.swift */,
+				QQAA11BB22CC33DD44EE55FF4 /* SettingsWindowController.swift */,
+SS4922B38B6324A375D6C24D7 /* Info.plist */,
 			);
 			path = "";
 			sourceTree = "<group>";
@@ -149,6 +161,10 @@
 				RRDE883876A5B269ECC4F2283 /* ShortcutView.swift */,
 				RR204B17F03F52344224A7A9F /* ShortcutDatabase.swift */,
 				RR9F6F835A877055490B40047 /* Models.swift */,
+				RRAA11BB22CC33DD44EE55FF1 /* Settings.swift */,
+				RRAA11BB22CC33DD44EE55FF2 /* LaunchAtLoginHelper.swift */,
+				RRAA11BB22CC33DD44EE55FF3 /* SettingsView.swift */,
+				RRAA11BB22CC33DD44EE55FF4 /* SettingsWindowController.swift */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

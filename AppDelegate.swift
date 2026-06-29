@@ -6,7 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Sub-components
 
-    private let hotkeyManager = HotkeyManager()
+    private var hotkeyManager: HotkeyManager!
     private var panel: ShortcutPanel!
     private var statusItem: NSStatusItem!
 
@@ -22,6 +22,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - NSApplicationDelegate
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 0. Load persisted settings BEFORE constructing HotkeyManager so the
+        //    initial long-press threshold and "press vs long-press" mode match
+        //    the user's saved preferences.
+        let settings = SettingsStore.shared.settings
+
         // 1. Status-bar item with menu (no Dock icon — accessory app).
         setupStatusItem()
 
@@ -29,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel = ShortcutPanel(contentSize: NSSize(width: 480, height: 540))
 
         // 3. Wire up hot-key events.
+        hotkeyManager = HotkeyManager(settings: settings)
         hotkeyManager.onCommandDown   = { [weak self] in self?.handleCommandDown() }
         hotkeyManager.onCommandUp     = { [weak self] in self?.handleCommandUp() }
         hotkeyManager.onKeyPressed    = { [weak self] _ in self?.hidePanel() }
@@ -41,6 +47,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 5. Ensure Accessibility permission, prompt if missing.
         ensureAccessibilityPermission()
+
+        // 6. If the user previously enabled "launch at login", keep the toggle
+        //    in sync with the OS state. (No-op for macOS < 13.)
+        if settings.launchAtLogin {
+            LaunchAtLoginHelper.setEnabled(true)
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -79,6 +91,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         testItem.target = self
         menu.addItem(testItem)
+
+        let prefsItem = NSMenuItem(
+            title: "偏好设置…",
+            action: #selector(openPreferences),
+            keyEquivalent: ","
+        )
+        prefsItem.target = self
+        menu.addItem(prefsItem)
 
         let permItem = NSMenuItem(
             title: "打开辅助功能设置…",
@@ -223,6 +243,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.setContent(ShortcutView(app: app, categories: categories))
         panel.positionNearCursor()
         panel.orderFrontRegardless()
+    }
+
+    @objc private func openPreferences() {
+        SettingsWindowController.shared.show()
     }
 
     @objc private func openAccessibilitySettings() {

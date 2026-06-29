@@ -7,6 +7,10 @@ enum AppDetector {
     static func current() -> FrontmostApp? {
         guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
 
+        // Skip zombie apps (process is gone but NSWorkspace still references them
+        // briefly after quit — leads to stale "frontmost = WeChat" reads).
+        if app.isTerminated { return nil }
+
         let name = app.localizedName ?? "未知"
         let bundleID = app.bundleIdentifier ?? ""
 

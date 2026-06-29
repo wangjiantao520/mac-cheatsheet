@@ -35,7 +35,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeyManager.onMouseClicked  = { [weak self] _ in self?.hidePanel() }
         hotkeyManager.start()
 
-        // 4. Ensure Accessibility permission, prompt if missing.
+        // 4. Track frontmost-app changes so the cached panel view doesn't go stale
+        //    when the user switches apps or quits one (e.g., quits WeChat).
+        setupAppTracking()
+
+        // 5. Ensure Accessibility permission, prompt if missing.
         ensureAccessibilityPermission()
     }
 
@@ -154,6 +158,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.panel.alphaValue = 1.0
             }
         }
+    }
+
+    // MARK: - App tracking
+
+    /// Invalidate the cached shortcut view whenever the frontmost app changes
+    /// (activation, termination). The next ⌘/⌃ long-press rebuilds with the
+    /// current frontmost app's shortcuts — fixing stale-content bugs like
+    /// "I quit WeChat but the panel still shows WeChat shortcuts".
+    private func setupAppTracking() {
+        let center = NSWorkspace.shared.notificationCenter
+        center.addObserver(
+            self,
+            selector: #selector(invalidateContentCache),
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
+        center.addObserver(
+            self,
+            selector: #selector(invalidateContentCache),
+            name: NSWorkspace.didTerminateApplicationNotification,
+            object: nil
+        )
+    }
+
+    @objc private func invalidateContentCache() {
+        contentBundleID = nil
+        // Note: we deliberately don't drop `contentHost` here — it's still
+        // attached to the panel and only replaced on the next showPanel()
+        // rebuild. Setting contentBundleID = nil forces that rebuild.
     }
 
     // MARK: - Accessibility

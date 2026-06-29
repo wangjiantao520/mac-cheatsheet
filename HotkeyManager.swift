@@ -1,29 +1,30 @@
 import AppKit
 
-/// Listens for Command-key state changes and any subsequent key presses
-/// across the entire system. Global monitors can only OBSERVE events,
-/// not consume them — which is exactly what we want so that the frontmost
-/// application still receives the keystroke.
+/// Listens for ⌘ Command / ⌃ Control key state changes and any subsequent
+/// key presses across the entire system. Global monitors can only OBSERVE
+/// events, not consume them — which is exactly what we want so that the
+/// frontmost application still receives the keystroke.
 ///
-/// Long-press semantics: `onCommandDown` only fires after the Command key
-/// has been held continuously for `longPressThreshold` seconds WITHOUT any
-/// other modifier or key being involved. This prevents the panel from
-/// appearing when the user is executing a regular ⌘X / ⌘S shortcut.
+/// Long-press semantics: `onCommandDown` only fires after the user has
+/// held ⌘ OR ⌃ continuously for `longPressThreshold` seconds, with no
+/// other modifier (⇧ / ⌥ / the other trigger key) involved. This prevents
+/// the panel from appearing when the user is executing a regular ⌘X / ⌘S
+/// shortcut, or a ⌘⌃ / ⌃⇧ combo.
 final class HotkeyManager {
 
     // MARK: - Tuning
 
-    /// How long (in seconds) the user must hold ⌘ before the panel appears.
+    /// How long (in seconds) the user must hold ⌘ or ⌃ before the panel appears.
     private let longPressThreshold: TimeInterval = 0.4
 
     // MARK: - Events
 
-    /// Fired when the Command key has been held long enough to count as a
-    /// long-press (no other modifier pressed during the hold).
+    /// Fired when ⌘ or ⌃ has been held long enough to count as a long-press
+    /// (no other modifier pressed during the hold, only one trigger key down).
     var onCommandDown: (() -> Void)?
 
-    /// Fired when the Command key transitions from down to up. Note that
-    /// for a successful long-press this is fired after `onCommandDown`.
+    /// Fired when the trigger key (⌘ or ⌃) is released.
+    /// Note that for a successful long-press this is fired after `onCommandDown`.
     var onCommandUp: (() -> Void)?
 
     /// Fired whenever any key is pressed (with or without modifiers).
@@ -38,10 +39,10 @@ final class HotkeyManager {
     private var keyMonitor: Any?
     private var mouseMonitor: Any?
 
-    private var wasCommandDown = false
-    /// Tracks whether ⌘ was held alone (no other modifiers) when the press
-    /// started, so we can cancel the timer if another modifier appears.
-    private var wasCommandAlone = false
+    private var wasCmdDown = false
+    private var wasCtrlDown = false
+    /// True when exactly one of ⌘/⌃ is down and no shift/option is pressed.
+    private var wasTriggerAlone = false
     private var longPressTimer: Timer?
     private(set) var isRunning = false
 
@@ -55,35 +56,43 @@ final class HotkeyManager {
         flagsMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             guard let self = self else { return }
             let cmdDown = event.modifierFlags.contains(.command)
+            let ctrlDown = event.modifierFlags.contains(.control)
+            let triggerCount = (cmdDown ? 1 : 0) + (ctrlDown ? 1 : 0)
+            // ⇧ / ⌥ are never trigger keys — treat them as combo modifiers.
             let otherModifiersDown = !event.modifierFlags
-                .subtracting(.command)
-                .isDisjoint(with: [.shift, .control, .option])
+                .subtracting([.command, .control])
+                .isDisjoint(with: [.shift, .option])
 
-            // Press edge: ⌘ just went down.
-            if cmdDown && !self.wasCommandDown {
-                if otherModifiersDown {
-                    // ⌘ pressed while another modifier was already held —
-                    // not a long-press intent (user is composing a combo).
-                    self.wasCommandAlone = false
+            let triggerActive = triggerCount > 0
+            let wasTriggerActive = self.wasCmdDown || self.wasCtrlDown
+
+            // Press edge: a trigger key (⌘ or ⌃) just went down.
+            if triggerActive && !wasTriggerActive {
+                if otherModifiersDown || triggerCount > 1 {
+                    // ⌘ or ⌃ pressed along with another modifier / trigger key —
+                    // user is composing a combo, not requesting a long-press.
+                    self.wasTriggerAlone = false
                 } else {
-                    self.wasCommandAlone = true
+                    self.wasTriggerAlone = true
                     self.scheduleLongPress()
                 }
             }
-            // Release edge: ⌘ just went up.
-            else if !cmdDown && self.wasCommandDown {
+            // Release edge: every trigger key released.
+            else if !triggerActive && wasTriggerActive {
                 self.cancelLongPress()
-                self.wasCommandAlone = false
+                self.wasTriggerAlone = false
                 DispatchQueue.main.async { self.onCommandUp?() }
             }
-            // ⌘ still down, but another modifier was added (e.g. ⌘→⌘⇧).
-            // No longer a "long-press ⌘" intent; cancel the pending trigger.
-            else if cmdDown && self.wasCommandDown && otherModifiersDown && self.wasCommandAlone {
-                self.cancelLongPress()
-                self.wasCommandAlone = false
+            // Trigger still held, but combo detected (added ⇧/⌥, or second trigger).
+            else if triggerActive && wasTriggerActive {
+                if (otherModifiersDown || triggerCount > 1) && self.wasTriggerAlone {
+                    self.cancelLongPress()
+                    self.wasTriggerAlone = false
+                }
             }
 
-            self.wasCommandDown = cmdDown
+            self.wasCmdDown = cmdDown
+            self.wasCtrlDown = ctrlDown
         }
 
         // 2. Any key press — cancels pending long-press AND dismisses panel.
@@ -124,8 +133,8 @@ final class HotkeyManager {
         ) { [weak self] _ in
             guard let self = self else { return }
             self.longPressTimer = nil
-            // Only fire if ⌘ is still held alone at the moment of firing.
-            if self.wasCommandDown && self.wasCommandAlone {
+            // Only fire if exactly one trigger key is still held alone.
+            if self.wasTriggerAlone {
                 DispatchQueue.main.async { self.onCommandDown?() }
             }
         }

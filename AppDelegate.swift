@@ -53,13 +53,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                               accessibilityDescription: "CheatSheet")
             img?.isTemplate = true
             button.image = img
-            button.toolTip = "CheatSheet — 在任意应用中长按 ⌘ 查看快捷键"
+            button.toolTip = "CheatSheet — 在任意应用中长按 ⌘ 或 ⌃ 查看快捷键"
         }
 
         let menu = NSMenu()
 
         let enableItem = NSMenuItem(
-            title: "在任意应用中长按 ⌘ 查看快捷键",
+            title: "在任意应用中长按 ⌘ 或 ⌃ 查看快捷键",
             action: nil,
             keyEquivalent: ""
         )
@@ -106,7 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleCommandUp() {
-        // Long-press UX: as soon as ⌘ is released, dismiss the panel.
+        // Long-press UX: as soon as ⌘ / ⌃ is released, dismiss the panel.
         hidePanel()
     }
 
